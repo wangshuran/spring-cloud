@@ -1,14 +1,311 @@
+server:
+
+  port: 8080
+
+#  ssl:
+#    enabled: true
+#    key-alias: scg
+#    key-store-password: scg1234
+#    key-store: classpath:scg-keystore.p12
+#    key-store-type: PKCS12
+
+management:
+
+  endpoint:
+    gateway:
+      # default value
+      enabled: true
+
+  endpoints:
+    web:
+      exposure:
+        include: gateway
+
 spring:
+
   application:
     name: gateway
 
   profiles:
     active: dao
 
-#  cloud:
-#    gateway:
-#      routes:
-#        - id: host_route
-#          uri: http://www.baidu.com
-#          predicates:
-#            - Path=/baidu
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "http://docs.spring.io"
+            allowedMethods:
+              - GET
+
+#      httpclient:
+#        ssl:
+#          useInsecureTrustManager: true
+#          trustedX509Certificates:
+#            - cert1.pem
+#            - cert2.pem
+#          handshake-timeout-millis: 10000
+#          close-notify-flush-timeout-millis: 3000
+#          close-notify-read-timeout-millis: 0
+
+#      default-filters:
+#        - AddResponseHeader=X-Response-Default-Foo, Default-Bar
+#        - PrefixPath=/httpbin
+
+      routes:
+
+        - id: after_route
+          uri: http://example.org
+          predicates:
+            - Path=/after_route
+            - After=2019-01-01T00:03:00.000+08:00[Asia/Shanghai]
+
+        - id: before_route
+          uri: http://example.org
+          predicates:
+            - Path=/before_route
+            - Before=2019-01-01T00:03:00.000+08:00[Asia/Shanghai]
+
+        - id: between_route
+          uri: http://example.org
+          predicates:
+            - Path=/between_route
+            - Between=2019-01-01T00:03:00.000+08:00[Asia/Shanghai], 2020-01-01T00:03:00.000+08:00[Asia/Shanghai]
+
+        - id: cookie_route
+          uri: http://example.org
+          predicates:
+            - Path=/cookie_route
+            - Cookie=chocolate, ch.p
+
+        - id: header_route
+          uri: http://example.org
+          predicates:
+            - Path=/header_route
+            - Header=X-Request-Id, \d+
+
+        - id: host_route
+          uri: http://example.org
+          predicates:
+            - Path=/host_route
+            - Host=**.somehost.org,**.anotherhost.org
+
+        - id: method_route
+          uri: http://example.org
+          predicates:
+            - Path=/method_route
+            - Method=GET
+
+        - id: host_route
+          uri: http://example.org
+          predicates:
+            - Path=/host_route
+            - Path=/foo/{segment},/bar/{segment}
+
+        - id: query_route
+          uri: http://example.org
+          predicates:
+            - Path=/query_route
+            # - Query=baz
+            - Query=foo, ba.
+
+        - id: remoteaddr_route
+          uri: http://example.org
+          predicates:
+            - Path=/remoteaddr_route
+            - RemoteAddr=192.168.1.1/24
+
+        - id: add_request_header_route
+          uri: http://example.org
+          predicates:
+            - Path=/add_request_header_route
+          filters:
+            - AddRequestHeader=X-Request-Foo, Bar
+
+        - id: add_request_parameter_route
+          uri: http://example.org
+          predicates:
+            - Path=/add_request_parameter_route
+          filters:
+            - AddRequestParameter=foo, bar
+
+        - id: add_response_header_route
+          uri: http://example.org
+          predicates:
+            - Path=/add_response_header_route
+          filters:
+            - AddResponseHeader=X-Response-Foo, Bar
+
+        - id: dedupe_response_header_route
+          uri: http://example.org
+          predicates:
+            - Path=/dedupe_response_header_route
+          filters:
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+        - id: prefixpath_route
+          uri: http://example.org
+          predicates:
+            - Path=/prefixpath_route
+          filters:
+            - PrefixPath=/mypath
+
+        - id: preserve_host_route
+          uri: http://example.org
+          predicates:
+            - Path=/preserve_host_route
+          filters:
+            - PreserveHostHeader
+
+        - id: requestratelimiter_route
+          uri: http://example.org
+          predicates:
+            - Path=/requestratelimiter_route
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+
+        - id: requestratelimiter_route
+          uri: http://example.org
+          predicates:
+            - Path=/requestratelimiter_route
+          filters:
+            - name: RequestRateLimiter
+              args:
+                rate-limiter: "#{@myRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: prefixpath_route
+          uri: http://example.org
+          predicates:
+            - Path=/prefixpath_route
+          filters:
+            - RedirectTo=302, http://acme.org
+
+        - id: removerequestheader_route
+          uri: http://example.org
+          predicates:
+            - Path=/removerequestheader_route
+          filters:
+            - RemoveRequestHeader=X-Request-Foo
+
+        - id: removeresponseheader_route
+          uri: http://example.org
+          predicates:
+            - Path=/removeresponseheader_route
+          filters:
+            - RemoveResponseHeader=X-Response-Foo
+
+        - id: rewritepath_route
+          uri: http://example.org
+          predicates:
+            - Path=/foo/**
+          filters:
+            - RewritePath=/foo/(?<segment>.*), /$\{segment}
+
+        - id: rewriteresponseheader_route
+          uri: http://example.org
+          predicates:
+            - Path=/rewriteresponseheader_route
+          filters:
+            - RewriteResponseHeader=X-Response-Foo, , password=[^&]+, password=***
+
+        - id: save_session
+          uri: http://example.org
+          predicates:
+            - Path=/foo/**
+          filters:
+            - SaveSession
+
+        - id: setpath_route
+          uri: http://example.org
+          predicates:
+            - Path=/foo/{segment}
+          filters:
+            - SetPath=/{segment}
+
+        - id: setresponseheader_route
+          uri: http://example.org
+          predicates:
+            - Path=/setresponseheader_route
+          filters:
+            - SetResponseHeader=X-Response-Foo, Bar
+
+        - id: setstatusstring_route
+          uri: http://example.org
+          predicates:
+            - Path=/setstatusstring_route
+          filters:
+            - SetStatus=BAD_REQUEST
+
+        - id: setstatusint_route
+          uri: http://example.org
+          predicates:
+            - Path=/setstatusint_route
+          filters:
+            - SetStatus=401
+
+        - id: nameRoot
+          uri: http://nameservice
+          predicates:
+            - Path=/name/**
+          filters:
+            - StripPrefix=2
+
+        - id: retry_test
+          uri: http://localhost:8080/flakey
+          predicates:
+            - Host=*.retry.com
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY
+
+        - id: request_size_route
+          uri: http://localhost:8080/upload
+          predicates:
+            - Path=/upload
+          filters:
+            - name: RequestSize
+              args:
+                maxSize: 5000000
+
+        - id: myRoute
+          uri: lb://service
+          predicates:
+            - Path=/service/**
+
+        # SockJS route
+        - id: websocket_sockjs_route
+          uri: http://localhost:3001
+          predicates:
+            - Path=/websocket/info/**
+        # Normwal Websocket route
+        - id: websocket_route
+          uri: ws://localhost:3001
+          predicates:
+            - Path=/websocket/**
+
+        - id: setstatus_route
+          uri: http://example.org
+          predicates:
+            - Path=/setstatus_route
+          filters:
+            - name: SetStatus
+              args:
+                status: 401
+
+        - id: setstatusshortcut_route
+          uri: http://example.org
+          predicates:
+            - Path=/setstatusshortcut_route
+          filters:
+            - SetStatus=401
+
