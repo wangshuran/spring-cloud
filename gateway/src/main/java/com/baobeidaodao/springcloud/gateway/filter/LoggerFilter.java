@@ -1,5 +1,6 @@
 package com.baobeidaodao.springcloud.gateway.filter;
 
+import com.baobeidaodao.springcloud.gateway.constant.FilterConstant;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -37,20 +38,25 @@ public class LoggerFilter implements GlobalFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
+
+        /// 以下信息，暂不记录
+        // MultiValueMap<String, HttpCookie> cookies = request.getCookies();
+        // InetSocketAddress remoteAddress = request.getRemoteAddress();
+        // SslInfo sslInfo = request.getSslInfo();
+        // HttpMethod httpMethod = request.getMethod();
+
         String id = request.getId();
         RequestPath path = request.getPath();
         MultiValueMap<String, String> queryParams = request.getQueryParams();
-        /// MultiValueMap<String, HttpCookie> cookies = serverHttpRequest.getCookies();
-        /// InetSocketAddress remoteAddress = serverHttpRequest.getRemoteAddress();
-        /// SslInfo sslInfo = serverHttpRequest.getSslInfo();
-        /// Flux<DataBuffer> body = serverHttpRequest.getBody();
-        /// HttpMethod httpMethod = serverHttpRequest.getMethod();
         HttpHeaders requestHeaders = request.getHeaders();
         String methodValue = request.getMethodValue();
         URI uri = request.getURI();
 
+        /// request body 只能获取一次。在网关这一层，使用其他方案记录此信息。比如自定义全局过滤器，将 body 记录到 exchange 的一个自定义属性中。
+        // Flux<DataBuffer> body = request.getBody();
+
         logger = new HashMap<>(1 << 4);
-        logger.put("filter", "preLogger");
+        logger.put("logger", "request");
         logger.put("id", id);
         logger.put("path", path.value());
         logger.put("queryParams", queryParams);
@@ -62,15 +68,28 @@ public class LoggerFilter implements GlobalFilter {
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
+
+        Object cachedRequestBodyObject = exchange.getAttributes().get(FilterConstant.CACHED_REQUEST_BODY_OBJECT_KEY);
+        if (cachedRequestBodyObject != null) {
+            byte[] body = (byte[]) cachedRequestBodyObject;
+            String string = new String(body);
+            log.info("request body:");
+            log.info(string);
+        }
+
         return chain.filter(exchange).then(Mono.fromRunnable(() -> {
             ServerHttpResponse response = exchange.getResponse();
-            /// MultiValueMap<String, ResponseCookie> cookies = response.getCookies();
+
+            /// 暂不记录 cookies
+            // MultiValueMap<String, ResponseCookie> cookies = response.getCookies();
+
             HttpStatus statusCode = response.getStatusCode();
             HttpHeaders responseHeaders = response.getHeaders();
             // todo response body
+            // response.writeAndFlushWith()
 
             logger = new HashMap<>(1 << 4);
-            logger.put("filter", "postLogger");
+            logger.put("logger", "response");
             logger.put("responseHeaders", responseHeaders);
             if (statusCode != null) {
                 logger.put("statusCode", statusCode.value());
